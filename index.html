@@ -28,6 +28,7 @@
 
     <script>
         const modelURL = 'https://raw.githubusercontent.com/aimoodmirror/Gudoop/main/model.json'; 
+        const categories = ['Happy', 'Sad', 'Neutral', 'Angry']; 
         let model;
 
         async function loadModel() {
@@ -54,27 +55,19 @@
                     // ... (Resize canvas and image data preparation)
 
                     const prediction = await model.predict(imageData);
-                    const result = await prediction.data(); // Use data() to get the raw data
-
-                    console.log('Raw prediction result:', result);
-
-                    const categories = ['Happy', 'Sad', 'Neutral', 'Angry']; 
+                    const probabilities = await prediction.data(); 
 
                     // Validate result shape
-                    if (result.length !== categories.length) {
-                        document.getElementById('prediction').innerText = 
-                            'Error: Mismatch between model outputs and categories.';
-                        console.error(
-                            'Mismatch: Model outputs', 
-                            result.length, 
-                            'categories', 
-                            categories.length
-                        );
-                        return;
+                    if (probabilities.length !== categories.length) {
+                        throw new Error(`Mismatch: Expected ${categories.length} probabilities, got ${probabilities.length}`);
                     }
 
-                    // ... (Find highest probability and display prediction)
+                    const maxProbability = Math.max(...probabilities);
+                    const predictedIndex = probabilities.indexOf(maxProbability);
+                    const predictedCategory = categories[predictedIndex];
+                    const confidence = (maxProbability * 100).toFixed(2);
 
+                    document.getElementById('prediction').innerText = `Prediction: ${predictedCategory} (${confidence}%)`; 
                 } catch (error) {
                     console.error('Error during prediction:', error);
                     document.getElementById('prediction').innerText = 'Prediction failed. Check console for details.';
