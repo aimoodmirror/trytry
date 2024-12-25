@@ -1,141 +1,86 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AI Model Test</title>
-  <!-- TensorFlow.js Library -->
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 20px;
-      background-color: #f4f4f9;
-    }
-    #input-container, #result {
-      background: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      margin: 20px auto;
-      max-width: 400px;
-    }
-    img {
-      max-width: 100%;
-      border-radius: 10px;
-    }
-    canvas {
-      display: none;
-    }
-    .loading {
-      font-size: 14px;
-      color: #888;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Model Test</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <style>
+        /* CSS styles (omitted for brevity) */
+    </style>
 </head>
 <body>
-  <h1>Test Your AI Model</h1>
-  <p id="status">Loading the model...</p>
+    <h1>Test Your AI Model</h1>
+    <p id="status">Loading the model...</p>
 
-  <div id="input-container">
-    <input type="file" id="imageInput" accept="image/*">
-    <p>Upload an image to test the model</p>
-    <img id="preview" src="" alt="Image Preview">
-  </div>
+    <div id="input-container">
+        <input type="file" id="imageInput" accept="image/*">
+        <p>Upload an image to test the model</p>
+        <img id="preview" src="" alt="Image Preview">
+    </div>
 
-  <div id="result">
-    <h2>Prediction:</h2>
-    <p id="prediction" class="loading">No prediction yet</p>
-  </div>
+    <div id="result">
+        <h2>Prediction:</h2>
+        <p id="prediction" class="loading">No prediction yet</p>
+    </div>
 
-  <canvas id="hiddenCanvas"></canvas>
+    <canvas id="hiddenCanvas"></canvas>
 
-  <script>
-    // Replace this with the correct raw URL for your GitHub-hosted model.json file
-    const modelURL = 'https://raw.githubusercontent.com/aimoodmirror/Gudoop/main/model.json';
+    <script>
+        const modelURL = 'https://raw.githubusercontent.com/aimoodmirror/Gudoop/main/model.json'; 
+        let model;
 
-    let model;
-
-    // Function to load the model
-    async function loadModel() {
-      try {
-        model = await tf.loadLayersModel(modelURL);
-        console.log('Model loaded successfully:', model);
-        document.getElementById('status').innerText = 'Model loaded successfully!';
-      } catch (error) {
-        console.error('Error loading model:', error);
-        document.getElementById('status').innerText = 'Failed to load the model. Check your URL.';
-      }
-    }
-
-    // Call the loadModel function
-    loadModel();
-
-    // Handle image upload and prediction
-    document.getElementById('imageInput').addEventListener('change', async (event) => {
-      const file = event.target.files[0];
-      if (!file) return;
-
-      // Display the image preview
-      const preview = document.getElementById('preview');
-      preview.src = URL.createObjectURL(file);
-
-      // Draw the image onto a hidden canvas to process it
-      const canvas = document.getElementById('hiddenCanvas');
-      const ctx = canvas.getContext('2d');
-      const img = new Image();
-      img.src = preview.src;
-
-      // Show a loading message
-      document.getElementById('prediction').innerText = 'Processing...';
-
-      img.onload = async () => {
-        try {
-          // Resize canvas to match the model's input
-          canvas.width = 224; // Input size for the model
-          canvas.height = 224;
-          ctx.drawImage(img, 0, 0, 224, 224);
-
-          // Prepare the image data
-          const imageData = tf.browser.fromPixels(canvas).expandDims(0).toFloat().div(255.0);
-
-          // Get predictions from the model
-          const prediction = model.predict(imageData);
-          const result = await prediction.array();
-
-          console.log('Raw prediction result:', result);
-
-          // Define the categories (these must match the model's output)
-          const categories = ['Happy', 'Sad', 'Neutral', 'Angry']; // Example categories
-
-          // Ensure the result matches the categories array
-          if (!result[0] || result[0].length !== categories.length) {
-            document.getElementById('prediction').innerText =
-              'Error: Mismatch between model outputs and categories.';
-            console.error(
-              'Mismatch: Model outputs',
-              result[0]?.length || 0,
-              'categories',
-              categories.length
-            );
-            return;
-          }
-
-          // Find the highest probability and its corresponding category
-          const maxProbability = Math.max(...result[0]); // Get the highest probability
-          const predictionIndex = result[0].indexOf(maxProbability); // Find the index
-          const predictionText = categories[predictionIndex]; // Map to the category name
-          const predictionConfidence = (maxProbability * 100).toFixed(2); // Convert to percentage
-
-          // Display the prediction
-          document.getElementById('prediction').innerText = `Prediction: ${predictionText} (${predictionConfidence}%)`;
-        } catch (error) {
-          console.error('Error during prediction:', error);
-          document.getElementById('prediction').innerText = 'Prediction failed. Check console for details.';
+        async function loadModel() {
+            try {
+                model = await tf.loadLayersModel(modelURL);
+                console.log('Model loaded successfully:', model);
+                document.getElementById('status').innerText = 'Model loaded successfully!';
+            } catch (error) {
+                console.error('Error loading model:', error);
+                document.getElementById('status').innerText = 'Failed to load the model. Check your URL.';
+            }
         }
-      };
-    });
-  </script>
+
+        loadModel();
+
+        document.getElementById('imageInput').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            // ... (Image preview and canvas drawing code)
+
+            img.onload = async () => {
+                try {
+                    // ... (Resize canvas and image data preparation)
+
+                    const prediction = await model.predict(imageData);
+                    const result = await prediction.data(); // Use data() to get the raw data
+
+                    console.log('Raw prediction result:', result);
+
+                    const categories = ['Happy', 'Sad', 'Neutral', 'Angry']; 
+
+                    // Validate result shape
+                    if (result.length !== categories.length) {
+                        document.getElementById('prediction').innerText = 
+                            'Error: Mismatch between model outputs and categories.';
+                        console.error(
+                            'Mismatch: Model outputs', 
+                            result.length, 
+                            'categories', 
+                            categories.length
+                        );
+                        return;
+                    }
+
+                    // ... (Find highest probability and display prediction)
+
+                } catch (error) {
+                    console.error('Error during prediction:', error);
+                    document.getElementById('prediction').innerText = 'Prediction failed. Check console for details.';
+                }
+            };
+        });
+    </script>
 </body>
 </html>
