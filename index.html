@@ -28,20 +28,13 @@
     <canvas id="overlay"></canvas> 
 
     <script>
-        const modelURL = '/models'; // Path to your face-api.js models
+        const modelURL = 'https://cdn.jsdelivr.net/npm/face-api.js/dist/'; // Example CDN
         const knownFaceEmbeddings = [ 
-            /* 
-               Replace with actual face embeddings for known individuals. 
-               Example: 
-               [
-                   [0.123, 0.456, ...], // Embedding for person 1
-                   [0.789, 0.234, ...]  // Embedding for person 2
-               ] 
-            */
+            /* Replace with actual known face descriptors */
         ];
-        const knownPersonNames = ['Person 1', 'Person 2']; // Names corresponding to embeddings
+        const knownPersonNames = ['Person 1', 'Person 2']; // Corresponding names
 
-        let faceMatcher; 
+        let faceMatcher;
 
         async function loadModels() {
             try {
@@ -51,7 +44,6 @@
                 console.log('Models loaded successfully');
                 document.getElementById('status').innerText = 'Models loaded successfully!';
 
-                // Create a FaceMatcher instance
                 faceMatcher = new faceapi.FaceMatcher(knownFaceEmbeddings, knownPersonNames, 0.6); 
             } catch (error) {
                 console.error('Error loading models:', error);
@@ -59,7 +51,7 @@
             }
         }
 
-        loadModel();
+        loadModels();
 
         document.getElementById('imageInput').addEventListener('change', async (event) => {
             const file = event.target.files[0];
@@ -77,13 +69,17 @@
                         .withFaceLandmarks()
                         .withFaceDescriptors();
 
+                    console.log('Detections:', detections); // Log detections
                     if (detections.length > 0) {
-                        const results = await faceapi.matchDistances(detections);
-                        const displayResults = results.map((result, i) => {
-                            const bestMatch = result[0];
-                            return `Face ${i + 1}: ${bestMatch.label} (distance: ${bestMatch.distance})`;
+                        const faceDescriptors = detections.map(d => d.descriptor);
+                        console.log('Face Descriptors:', faceDescriptors); // Log descriptors
+
+                        const results = faceDescriptors.map(descriptor => {
+                            const bestMatch = faceMatcher.findBestMatch(descriptor);
+                            return `${bestMatch.label} (distance: ${bestMatch.distance})`;
                         });
-                        document.getElementById('prediction').innerText = displayResults.join('<br>'); 
+
+                        document.getElementById('prediction').innerHTML = results.join('<br>');
                     } else {
                         document.getElementById('prediction').innerText = 'No faces detected.';
                     }
