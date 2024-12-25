@@ -129,7 +129,7 @@
           const predictionConfidence = (maxProbability * 100).toFixed(2); // Convert to percentage
 
           // Display the prediction
-          document.getElementById('prediction').innerText = Prediction: ${predictionText} (${predictionConfidence}%);
+          document.getElementById('prediction').innerText = `Prediction: ${predictionText} (${predictionConfidence}%)`;
         } catch (error) {
           console.error('Error during prediction:', error);
           document.getElementById('prediction').innerText = 'Prediction failed. Check console for details.';
