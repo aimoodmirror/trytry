@@ -7,7 +7,24 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://unpkg.com/face-api.js"></script> 
     <style>
-        /* CSS styles (omitted for brevity) */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            text-align: center;
+        }
+        #input-container {
+            margin-bottom: 20px;
+        }
+        #overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+        #preview {
+            max-width: 100%;
+            max-height: 600px;
+        }
     </style>
 </head>
 <body>
@@ -28,14 +45,13 @@
     <canvas id="overlay"></canvas> 
 
     <script>
-        const modelURL = 'https://cdn.jsdelivr.net/npm/face-api.js/dist/'; // Example CDN
-        const knownFaceEmbeddings = [ 
-            /* Replace with actual known face descriptors */
-        ];
-        const knownPersonNames = ['Person 1', 'Person 2']; // Corresponding names
+        const modelURL = 'https://cdn.jsdelivr.net/npm/face-api.js/dist/'; // Using a CDN for models
+        const knownFaceEmbeddings = []; // Array to store known face embeddings
+        const knownPersonNames = []; // Array to store names for known people
 
         let faceMatcher;
 
+        // Load face-api.js models
         async function loadModels() {
             try {
                 await faceapi.loadSsdMobilenetv1Model(modelURL);
@@ -43,8 +59,6 @@
                 await faceapi.loadFaceRecognitionModel(modelURL);
                 console.log('Models loaded successfully');
                 document.getElementById('status').innerText = 'Models loaded successfully!';
-
-                faceMatcher = new faceapi.FaceMatcher(knownFaceEmbeddings, knownPersonNames, 0.6); 
             } catch (error) {
                 console.error('Error loading models:', error);
                 document.getElementById('status').innerText = 'Failed to load models. Check model URLs.';
@@ -53,6 +67,7 @@
 
         loadModels();
 
+        // Handle image file input
         document.getElementById('imageInput').addEventListener('change', async (event) => {
             const file = event.target.files[0];
             if (!file) return;
@@ -69,13 +84,13 @@
                         .withFaceLandmarks()
                         .withFaceDescriptors();
 
-                    console.log('Detections:', detections); // Log detections
                     if (detections.length > 0) {
-                        const faceDescriptors = detections.map(d => d.descriptor);
-                        console.log('Face Descriptors:', faceDescriptors); // Log descriptors
+                        // Create a FaceMatcher instance
+                        const descriptors = detections.map(d => d.descriptor);
+                        faceMatcher = new faceapi.FaceMatcher(descriptors, knownPersonNames, 0.6); // Use a threshold of 0.6
 
-                        const results = faceDescriptors.map(descriptor => {
-                            const bestMatch = faceMatcher.findBestMatch(descriptor);
+                        const results = detections.map(d => {
+                            const bestMatch = faceMatcher.findBestMatch(d.descriptor);
                             return `${bestMatch.label} (distance: ${bestMatch.distance})`;
                         });
 
@@ -86,13 +101,25 @@
 
                     faceapi.draw.drawDetections(canvas, detections); 
                     faceapi.draw.drawFaceLandmarks(canvas, detections); 
-
                 } catch (error) {
                     console.error('Error during prediction:', error);
                     document.getElementById('prediction').innerText = `Prediction failed: ${error.message}`; 
                 }
             };
         });
+
+        // Example: Add known face descriptors (manually or through a known person's image)
+        async function addKnownFace() {
+            const image = await faceapi.fetchImage('path_to_known_person_image'); // Replace with an actual path
+            const detections = await faceapi.detectSingleFace(image).withFaceLandmarks().withFaceDescriptor();
+            if (detections) {
+                knownFaceEmbeddings.push(detections.descriptor);
+                knownPersonNames.push('Known Person'); // Replace with the person's name
+            }
+        }
+
+        // Call this function to add known faces before testing
+        // addKnownFace();
     </script>
 </body>
 </html>
