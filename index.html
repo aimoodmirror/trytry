@@ -1,125 +1,141 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Face Recognition</title>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://unpkg.com/face-api.js"></script> 
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            text-align: center;
-        }
-        #input-container {
-            margin-bottom: 20px;
-        }
-        #overlay {
-            position: absolute;
-            top: 0;
-            left: 0;
-        }
-        #preview {
-            max-width: 100%;
-            max-height: 600px;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Model Test</title>
+  <!-- TensorFlow.js Library -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+      background-color: #f4f4f9;
+    }
+    #input-container, #result {
+      background: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      margin: 20px auto;
+      max-width: 400px;
+    }
+    img {
+      max-width: 100%;
+      border-radius: 10px;
+    }
+    canvas {
+      display: none;
+    }
+    .loading {
+      font-size: 14px;
+      color: #888;
+    }
+  </style>
 </head>
 <body>
-    <h1>Face Recognition</h1>
-    <p id="status">Loading models...</p>
+  <h1>Test Your AI Model</h1>
+  <p id="status">Loading the model...</p>
 
-    <div id="input-container">
-        <input type="file" id="imageInput" accept="image/*">
-        <p>Upload an image to test the model</p>
-        <img id="preview" src="" alt="Image Preview">
-    </div>
+  <div id="input-container">
+    <input type="file" id="imageInput" accept="image/*">
+    <p>Upload an image to test the model</p>
+    <img id="preview" src="" alt="Image Preview">
+  </div>
 
-    <div id="result">
-        <h2>Prediction:</h2>
-        <p id="prediction" class="loading">No prediction yet</p>
-    </div>
+  <div id="result">
+    <h2>Prediction:</h2>
+    <p id="prediction" class="loading">No prediction yet</p>
+  </div>
 
-    <canvas id="overlay"></canvas> 
+  <canvas id="hiddenCanvas"></canvas>
 
-    <script>
-        const modelURL = 'https://cdn.jsdelivr.net/npm/face-api.js/dist/'; // Using a CDN for models
-        const knownFaceEmbeddings = []; // Array to store known face embeddings
-        const knownPersonNames = []; // Array to store names for known people
+  <script>
+    // Replace this with the correct raw URL for your GitHub-hosted model.json file
+    const modelURL = 'https://raw.githubusercontent.com/aimoodmirror/Gudoop/main/model.json';
 
-        let faceMatcher;
+    let model;
 
-        // Load face-api.js models
-        async function loadModels() {
-            try {
-                await faceapi.loadSsdMobilenetv1Model(modelURL);
-                await faceapi.loadFaceLandmarkModel(modelURL);
-                await faceapi.loadFaceRecognitionModel(modelURL);
-                console.log('Models loaded successfully');
-                document.getElementById('status').innerText = 'Models loaded successfully!';
-            } catch (error) {
-                console.error('Error loading models:', error);
-                document.getElementById('status').innerText = 'Failed to load models. Check model URLs.';
-            }
+    // Function to load the model
+    async function loadModel() {
+      try {
+        model = await tf.loadLayersModel(modelURL);
+        console.log('Model loaded successfully:', model);
+        document.getElementById('status').innerText = 'Model loaded successfully!';
+      } catch (error) {
+        console.error('Error loading model:', error);
+        document.getElementById('status').innerText = 'Failed to load the model. Check your URL.';
+      }
+    }
+
+    // Call the loadModel function
+    loadModel();
+
+    // Handle image upload and prediction
+    document.getElementById('imageInput').addEventListener('change', async (event) => {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      // Display the image preview
+      const preview = document.getElementById('preview');
+      preview.src = URL.createObjectURL(file);
+
+      // Draw the image onto a hidden canvas to process it
+      const canvas = document.getElementById('hiddenCanvas');
+      const ctx = canvas.getContext('2d');
+      const img = new Image();
+      img.src = preview.src;
+
+      // Show a loading message
+      document.getElementById('prediction').innerText = 'Processing...';
+
+      img.onload = async () => {
+        try {
+          // Resize canvas to match the model's input
+          canvas.width = 224; // Input size for the model
+          canvas.height = 224;
+          ctx.drawImage(img, 0, 0, 224, 224);
+
+          // Prepare the image data
+          const imageData = tf.browser.fromPixels(canvas).expandDims(0).toFloat().div(255.0);
+
+          // Get predictions from the model
+          const prediction = model.predict(imageData);
+          const result = await prediction.array();
+
+          console.log('Raw prediction result:', result);
+
+          // Define the categories (these must match the model's output)
+          const categories = ['Happy', 'Sad', 'Neutral', 'Angry']; // Example categories
+
+          // Ensure the result matches the categories array
+          if (!result[0] || result[0].length !== categories.length) {
+            document.getElementById('prediction').innerText =
+              'Error: Mismatch between model outputs and categories.';
+            console.error(
+              'Mismatch: Model outputs',
+              result[0]?.length || 0,
+              'categories',
+              categories.length
+            );
+            return;
+          }
+
+          // Find the highest probability and its corresponding category
+          const maxProbability = Math.max(...result[0]); // Get the highest probability
+          const predictionIndex = result[0].indexOf(maxProbability); // Find the index
+          const predictionText = categories[predictionIndex]; // Map to the category name
+          const predictionConfidence = (maxProbability * 100).toFixed(2); // Convert to percentage
+
+          // Display the prediction
+          document.getElementById('prediction').innerText = Prediction: ${predictionText} (${predictionConfidence}%);
+        } catch (error) {
+          console.error('Error during prediction:', error);
+          document.getElementById('prediction').innerText = 'Prediction failed. Check console for details.';
         }
-
-        loadModels();
-
-        // Handle image file input
-        document.getElementById('imageInput').addEventListener('change', async (event) => {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            const preview = document.getElementById('preview');
-            preview.src = URL.createObjectURL(file);
-
-            preview.onload = async () => { 
-                const canvas = document.getElementById('overlay');
-                faceapi.matchDimensions(canvas, preview); 
-
-                try {
-                    const detections = await faceapi.detectAllFaces(preview)
-                        .withFaceLandmarks()
-                        .withFaceDescriptors();
-
-                    if (detections.length > 0) {
-                        // Create a FaceMatcher instance
-                        const descriptors = detections.map(d => d.descriptor);
-                        faceMatcher = new faceapi.FaceMatcher(descriptors, knownPersonNames, 0.6); // Use a threshold of 0.6
-
-                        const results = detections.map(d => {
-                            const bestMatch = faceMatcher.findBestMatch(d.descriptor);
-                            return `${bestMatch.label} (distance: ${bestMatch.distance})`;
-                        });
-
-                        document.getElementById('prediction').innerHTML = results.join('<br>');
-                    } else {
-                        document.getElementById('prediction').innerText = 'No faces detected.';
-                    }
-
-                    faceapi.draw.drawDetections(canvas, detections); 
-                    faceapi.draw.drawFaceLandmarks(canvas, detections); 
-                } catch (error) {
-                    console.error('Error during prediction:', error);
-                    document.getElementById('prediction').innerText = `Prediction failed: ${error.message}`; 
-                }
-            };
-        });
-
-        // Example: Add known face descriptors (manually or through a known person's image)
-        async function addKnownFace() {
-            const image = await faceapi.fetchImage('path_to_known_person_image'); // Replace with an actual path
-            const detections = await faceapi.detectSingleFace(image).withFaceLandmarks().withFaceDescriptor();
-            if (detections) {
-                knownFaceEmbeddings.push(detections.descriptor);
-                knownPersonNames.push('Known Person'); // Replace with the person's name
-            }
-        }
-
-        // Call this function to add known faces before testing
-        // addKnownFace();
-    </script>
+      };
+    });
+  </script>
 </body>
 </html>
