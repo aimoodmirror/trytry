@@ -48,16 +48,22 @@
             const file = event.target.files[0];
             if (!file) return;
 
-            // ... (Image preview and canvas drawing code)
+            const preview = document.getElementById('preview');
+            preview.src = URL.createObjectURL(file); 
 
-            img.onload = async () => {
+            preview.onload = async () => { 
+                const canvas = document.getElementById('hiddenCanvas');
+                const ctx = canvas.getContext('2d');
+                canvas.width = 224; // Assuming your model expects 224x224 input
+                canvas.height = 224;
+                ctx.drawImage(img, 0, 0, 224, 224);
+
+                const imageData = tf.browser.fromPixels(canvas).expandDims(0).toFloat().div(255.0);
+
                 try {
-                    // ... (Resize canvas and image data preparation)
-
                     const prediction = await model.predict(imageData);
                     const probabilities = await prediction.data(); 
 
-                    // Validate result shape
                     if (probabilities.length !== categories.length) {
                         throw new Error(`Mismatch: Expected ${categories.length} probabilities, got ${probabilities.length}`);
                     }
