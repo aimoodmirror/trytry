@@ -106,8 +106,8 @@
 
           console.log('Raw prediction result:', result);
 
-          // Define the categories (these must match the model's output)
-          const categories = ['Happy', 'Sad', 'Neutral', 'Angry']; // Example categories
+          // Define the categories matching your model's labels
+          const categories = ['angry', 'confused', 'sad', 'neutral', 'surprised', 'happy'];
 
           // Ensure the result matches the categories array
           if (!result[0] || result[0].length !== categories.length) {
